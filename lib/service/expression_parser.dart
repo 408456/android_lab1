@@ -1,3 +1,5 @@
+import '../exception/calculator_exception.dart';
+
 class ExpressionParser {
   String _expression = '';
   int _position = 0;
@@ -8,17 +10,24 @@ class ExpressionParser {
         .replaceAll('×', '*')
         .replaceAll('÷', '/')
         .replaceAll('−', '-');
+
     _position = 0;
 
     if (_expression.isEmpty) {
-      throw FormatException('Пустое выражение');
+      throw CalculatorException('пустое выражение');
+    }
+
+    if (_isOperator(_expression[_expression.length - 1])) {
+      throw CalculatorException(
+        'выражение заканчивается оператором',
+      );
     }
 
     final result = _parseExpression();
 
     if (_position < _expression.length) {
-      throw FormatException(
-        'Некорректное выражение: ${_expression[_position]}',
+      throw CalculatorException(
+        'некорректное выражение: ${_expression[_position]}',
       );
     }
 
@@ -56,10 +65,11 @@ class ExpressionParser {
         result *= _parseFactor();
       } else if (operator == '/') {
         _position++;
+
         final divisor = _parseFactor();
 
         if (divisor == 0) {
-          throw FormatException('Деление на ноль');
+          throw CalculatorException('деление на ноль');
         }
 
         result /= divisor;
@@ -73,7 +83,7 @@ class ExpressionParser {
 
   double _parseFactor() {
     if (_position >= _expression.length) {
-      throw FormatException('Ожидалось число');
+      throw CalculatorException('ожидалось число число');
     }
 
     if (_expression[_position] == '-') {
@@ -84,16 +94,27 @@ class ExpressionParser {
     if (_expression[_position] == '(') {
       _position++;
 
+      if (_position < _expression.length &&
+          _expression[_position] == ')') {
+        throw CalculatorException(
+          'пустые скобки недопустимы',
+        );
+      }
+
       final result = _parseExpression();
 
       if (_position >= _expression.length ||
           _expression[_position] != ')') {
-        throw FormatException('Неправильные скобки');
+        throw CalculatorException('неправильные скобки');
       }
 
       _position++;
 
       return result;
+    }
+
+    if (_expression[_position] == ')') {
+      throw CalculatorException('неправильные скобки');
     }
 
     return _parseNumber();
@@ -108,8 +129,8 @@ class ExpressionParser {
 
       if (character == '.') {
         if (hasDot) {
-          throw FormatException(
-            'В одном числе несколько десятичных точек',
+          throw CalculatorException(
+            'в одном числе несколько десятичных точек',
           );
         }
 
@@ -123,18 +144,29 @@ class ExpressionParser {
     }
 
     if (start == _position) {
-      throw FormatException(
-        'Ожидалось число',
-      );
+      throw CalculatorException('ожидалось число');
     }
 
     final numberText = _expression.substring(start, _position);
 
-    return double.parse(numberText);
+    try {
+      return double.parse(numberText);
+    } catch (_) {
+      throw CalculatorException(
+        'некорректное число: $numberText',
+      );
+    }
   }
 
   bool _isDigit(String character) {
     return character.codeUnitAt(0) >= '0'.codeUnitAt(0) &&
         character.codeUnitAt(0) <= '9'.codeUnitAt(0);
+  }
+
+  bool _isOperator(String character) {
+    return character == '+' ||
+        character == '-' ||
+        character == '*' ||
+        character == '/';
   }
 }

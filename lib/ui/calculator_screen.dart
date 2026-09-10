@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../exception/calculator_exception.dart';
+import '../utils/calculator_logger.dart';
 import '../service/expression_parser.dart';
 
 class CalculatorScreen extends StatefulWidget {
@@ -14,11 +16,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String result = '';
 
   final ExpressionParser parser = ExpressionParser();
+  final CalculatorLogger logger = CalculatorLogger();
 
   void onButtonPressed(String button) {
     if (_isDigit(button)) {
       setState(() {
         expression += button;
+        result = '';
       });
       return;
     }
@@ -27,6 +31,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (_canAddDecimalPoint()) {
         setState(() {
           expression += button;
+          result = '';
         });
       }
       return;
@@ -36,6 +41,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (_canAddOpeningBracket()) {
         setState(() {
           expression += button;
+          result = '';
         });
       }
       return;
@@ -45,6 +51,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (_canAddClosingBracket()) {
         setState(() {
           expression += button;
+          result = '';
         });
       }
       return;
@@ -54,22 +61,38 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (_canAddOperator()) {
         setState(() {
           expression += button;
+          result = '';
         });
       }
     }
   }
 
   void calculate() {
+    logger.logAction('вычисление: $expression');
+
     try {
       final value = parser.evaluate(expression);
+      final calculatedResult = value.toString();
 
       setState(() {
-        result = value.toString();
+        result = calculatedResult;
       });
+    } on CalculatorException catch (e) {
+      setState(() {
+        result = e.message;
+      });
+
+      logger.logError(
+        'ошибка вычисления "$expression": ${e.message}',
+      );
     } catch (e) {
       setState(() {
-        result = 'Ошибка';
+        result = 'неизвестная ошибка';
       });
+
+      logger.logError(
+        'неизвестная ошибка "$expression": $e',
+      );
     }
   }
 
@@ -84,23 +107,40 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       return;
     }
 
-    setState(() {
-      int start = expression.length - 1;
+    try {
+      setState(() {
+        int start = expression.length - 1;
 
-      while (start >= 0 &&
-          (_isDigit(expression[start]) || expression[start] == '.')) {
-        start--;
-      }
+        while (start >= 0 &&
+            (_isDigit(expression[start]) ||
+                expression[start] == '.')) {
+          start--;
+        }
 
-      final number = expression.substring(start + 1);
+        final number = expression.substring(start + 1);
+        final value = double.parse(number) / 100;
 
-      final value = double.parse(number) / 100;
+        expression =
+            expression.substring(0, start + 1) + value.toString();
 
-      expression = expression.substring(0, start + 1) + value.toString();
-    });
+        result = '';
+      });
+    } catch (e) {
+      logger.logError(
+        'ошибка применения процента "$expression": $e',
+      );
+
+      setState(() {
+        result = 'некорректное число';
+      });
+    }
   }
 
   void changeSign() {
+    logger.logAction(
+      'изменение знака выражения: $expression',
+    );
+
     if (expression.isEmpty) {
       return;
     }
@@ -115,7 +155,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       int start = expression.length - 1;
 
       while (start >= 0 &&
-          (_isDigit(expression[start]) || expression[start] == '.')) {
+          (_isDigit(expression[start]) ||
+              expression[start] == '.')) {
         start--;
       }
 
@@ -124,12 +165,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (start >= 0 && expression[start] == '-') {
         expression = expression.substring(0, start) + number;
       } else {
-        expression = expression.substring(0, start + 1) + '-' + number;
+        expression =
+            expression.substring(0, start + 1) + '-' + number;
       }
+
+      result = '';
     });
   }
 
   void clear() {
+    logger.logAction('очистка калькулятора');
+
     setState(() {
       expression = '';
       result = '';
@@ -142,7 +188,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
 
     setState(() {
-      expression = expression.substring(0, expression.length - 1);
+      expression =
+          expression.substring(0, expression.length - 1);
+      result = '';
     });
   }
 
@@ -153,7 +201,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   bool _isOperator(String button) {
-    return button == '+' || button == '−' || button == '×' || button == '÷';
+    return button == '+' ||
+        button == '−' ||
+        button == '×' ||
+        button == '÷';
   }
 
   bool _canAddOperator() {
@@ -242,7 +293,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('android_lab1')),
+      appBar: AppBar(
+        title: const Text('android_lab1'),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -257,7 +310,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   children: [
                     Text(
                       expression.isEmpty ? '0' : expression,
-                      style: const TextStyle(fontSize: 32),
+                      style: const TextStyle(
+                        fontSize: 32,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -275,13 +330,27 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               flex: 2,
               child: Column(
                 children: [
-                  buildButtonRow(['M+', 'M−', 'MR', 'MC']),
-                  buildButtonRow(['C', '⌫', '(', ')']),
-                  buildButtonRow(['7', '8', '9', '÷']),
-                  buildButtonRow(['4', '5', '6', '×']),
-                  buildButtonRow(['1', '2', '3', '−']),
-                  buildButtonRow(['0', '.', '%', '+']),
-                  buildButtonRow(['±', '=', '', '']),
+                  buildButtonRow(
+                    ['M+', 'M−', 'MR', 'MC'],
+                  ),
+                  buildButtonRow(
+                    ['C', '⌫', '(', ')'],
+                  ),
+                  buildButtonRow(
+                    ['7', '8', '9', '÷'],
+                  ),
+                  buildButtonRow(
+                    ['4', '5', '6', '×'],
+                  ),
+                  buildButtonRow(
+                    ['1', '2', '3', '−'],
+                  ),
+                  buildButtonRow(
+                    ['0', '.', '%', '+'],
+                  ),
+                  buildButtonRow(
+                    ['±', '=', '', ''],
+                  ),
                 ],
               ),
             ),
@@ -313,21 +382,26 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 onPressed: button.isEmpty
                     ? null
                     : () {
-                        if (button == '=') {
-                          calculate();
-                        } else if (button == 'C') {
-                          clear();
-                        } else if (button == '⌫') {
-                          backspace();
-                        } else if (button == '±') {
-                          changeSign();
-                        } else if (button == '%') {
-                          percent();
-                        } else {
-                          onButtonPressed(button);
-                        }
-                      },
-                child: Text(button, style: const TextStyle(fontSize: 20)),
+                  if (button == '=') {
+                    calculate();
+                  } else if (button == 'C') {
+                    clear();
+                  } else if (button == '⌫') {
+                    backspace();
+                  } else if (button == '±') {
+                    changeSign();
+                  } else if (button == '%') {
+                    percent();
+                  } else {
+                    onButtonPressed(button);
+                  }
+                },
+                child: Text(
+                  button,
+                  style: const TextStyle(
+                    fontSize: 20,
+                  ),
+                ),
               ),
             ),
           );
