@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../model/calculation_history.dart';
 import '../exception/calculator_exception.dart';
 import '../utils/calculator_logger.dart';
 import '../service/expression_parser.dart';
@@ -14,9 +15,12 @@ class CalculatorScreen extends StatefulWidget {
 class _CalculatorScreenState extends State<CalculatorScreen> {
   String expression = '';
   String result = '';
+  double memory = 0;
 
   final ExpressionParser parser = ExpressionParser();
   final CalculatorLogger logger = CalculatorLogger();
+
+  final List<CalculationHistoryItem> history = [];
 
   void onButtonPressed(String button) {
     if (_isDigit(button)) {
@@ -76,23 +80,31 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
       setState(() {
         result = calculatedResult;
+
+        history.insert(
+          0,
+          CalculationHistoryItem(
+            expression: expression,
+            result: calculatedResult,
+          ),
+        );
+
+        if (history.length > 10) {
+          history.removeLast();
+        }
       });
     } on CalculatorException catch (e) {
       setState(() {
         result = e.message;
       });
 
-      logger.logError(
-        'ошибка вычисления "$expression": ${e.message}',
-      );
+      logger.logError('ошибка вычисления "$expression": ${e.message}');
     } catch (e) {
       setState(() {
         result = 'неизвестная ошибка';
       });
 
-      logger.logError(
-        'неизвестная ошибка "$expression": $e',
-      );
+      logger.logError('неизвестная ошибка "$expression": $e');
     }
   }
 
@@ -112,24 +124,18 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         int start = expression.length - 1;
 
         while (start >= 0 &&
-            (_isDigit(expression[start]) ||
-                expression[start] == '.')) {
+            (_isDigit(expression[start]) || expression[start] == '.')) {
           start--;
         }
 
         final number = expression.substring(start + 1);
         final value = double.parse(number) / 100;
 
-        expression =
-            expression.substring(0, start + 1) + value.toString();
+        expression = expression.substring(0, start + 1) + value.toString();
 
         result = '';
       });
     } catch (e) {
-      logger.logError(
-        'ошибка применения процента "$expression": $e',
-      );
-
       setState(() {
         result = 'некорректное число';
       });
@@ -137,10 +143,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   void changeSign() {
-    logger.logAction(
-      'изменение знака выражения: $expression',
-    );
-
     if (expression.isEmpty) {
       return;
     }
@@ -155,8 +157,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       int start = expression.length - 1;
 
       while (start >= 0 &&
-          (_isDigit(expression[start]) ||
-              expression[start] == '.')) {
+          (_isDigit(expression[start]) || expression[start] == '.')) {
         start--;
       }
 
@@ -165,8 +166,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (start >= 0 && expression[start] == '-') {
         expression = expression.substring(0, start) + number;
       } else {
-        expression =
-            expression.substring(0, start + 1) + '-' + number;
+        expression = expression.substring(0, start + 1) + '-' + number;
       }
 
       result = '';
@@ -174,8 +174,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   void clear() {
-    logger.logAction('очистка калькулятора');
-
     setState(() {
       expression = '';
       result = '';
@@ -188,8 +186,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
 
     setState(() {
-      expression =
-          expression.substring(0, expression.length - 1);
+      expression = expression.substring(0, expression.length - 1);
       result = '';
     });
   }
@@ -201,10 +198,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   bool _isOperator(String button) {
-    return button == '+' ||
-        button == '−' ||
-        button == '×' ||
-        button == '÷';
+    return button == '+' || button == '−' || button == '×' || button == '÷';
   }
 
   bool _canAddOperator() {
@@ -290,15 +284,121 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     return opening > closing;
   }
 
+  void memoryAdd() {
+    if (result.isEmpty) {
+      return;
+    }
+
+    final value = double.tryParse(result);
+
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      memory += value;
+    });
+
+    logger.logAction('M+: $memory');
+  }
+
+  void memorySubtract() {
+    if (result.isEmpty) {
+      return;
+    }
+
+    final value = double.tryParse(result);
+
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      memory -= value;
+    });
+
+    logger.logAction('M−: $memory');
+  }
+
+  void memoryRecall() {
+    setState(() {
+      expression = memory.toString();
+      result = '';
+    });
+
+    logger.logAction('MR: $memory');
+  }
+
+  void memoryClear() {
+    setState(() {
+      memory = 0;
+    });
+
+    logger.logAction('MC: память очищена');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('android_lab1'),
-      ),
+      appBar: AppBar(title: const Text('android_lab1')),
       body: SafeArea(
         child: Column(
           children: [
+            if (history.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 90,
+                      child: ListView.builder(
+                        itemCount: history.length,
+                        itemBuilder: (context, index) {
+                          final item = history[index];
+
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                expression = item.expression;
+                                result = '';
+                              });
+
+                              logger.logAction(
+                                'выбрано выражение из истории: ${item.expression}',
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.expression,
+                                      style: const TextStyle(fontSize: 16),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text(
+                                    '= ${item.result}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                  ],
+                ),
+              ),
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -310,9 +410,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   children: [
                     Text(
                       expression.isEmpty ? '0' : expression,
-                      style: const TextStyle(
-                        fontSize: 32,
-                      ),
+                      style: const TextStyle(fontSize: 32),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -330,27 +428,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               flex: 2,
               child: Column(
                 children: [
-                  buildButtonRow(
-                    ['M+', 'M−', 'MR', 'MC'],
-                  ),
-                  buildButtonRow(
-                    ['C', '⌫', '(', ')'],
-                  ),
-                  buildButtonRow(
-                    ['7', '8', '9', '÷'],
-                  ),
-                  buildButtonRow(
-                    ['4', '5', '6', '×'],
-                  ),
-                  buildButtonRow(
-                    ['1', '2', '3', '−'],
-                  ),
-                  buildButtonRow(
-                    ['0', '.', '%', '+'],
-                  ),
-                  buildButtonRow(
-                    ['±', '=', '', ''],
-                  ),
+                  buildButtonRow(['M+', 'M−', 'MR', 'MC']),
+                  buildButtonRow(['C', '⌫', '(', ')']),
+                  buildButtonRow(['7', '8', '9', '÷']),
+                  buildButtonRow(['4', '5', '6', '×']),
+                  buildButtonRow(['1', '2', '3', '−']),
+                  buildButtonRow(['0', '.', '%', '+']),
+                  buildButtonRow(['±', '=', '', '']),
                 ],
               ),
             ),
@@ -382,26 +466,29 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 onPressed: button.isEmpty
                     ? null
                     : () {
-                  if (button == '=') {
-                    calculate();
-                  } else if (button == 'C') {
-                    clear();
-                  } else if (button == '⌫') {
-                    backspace();
-                  } else if (button == '±') {
-                    changeSign();
-                  } else if (button == '%') {
-                    percent();
-                  } else {
-                    onButtonPressed(button);
-                  }
-                },
-                child: Text(
-                  button,
-                  style: const TextStyle(
-                    fontSize: 20,
-                  ),
-                ),
+                        if (button == '=') {
+                          calculate();
+                        } else if (button == 'C') {
+                          clear();
+                        } else if (button == '⌫') {
+                          backspace();
+                        } else if (button == '±') {
+                          changeSign();
+                        } else if (button == '%') {
+                          percent();
+                        } else if (button == 'M+') {
+                          memoryAdd();
+                        } else if (button == 'M−') {
+                          memorySubtract();
+                        } else if (button == 'MR') {
+                          memoryRecall();
+                        } else if (button == 'MC') {
+                          memoryClear();
+                        } else {
+                          onButtonPressed(button);
+                        }
+                      },
+                child: Text(button, style: const TextStyle(fontSize: 20)),
               ),
             ),
           );

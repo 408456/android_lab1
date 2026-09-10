@@ -13,15 +13,7 @@ class ExpressionParser {
 
     _position = 0;
 
-    if (_expression.isEmpty) {
-      throw CalculatorException('пустое выражение');
-    }
-
-    if (_isOperator(_expression[_expression.length - 1])) {
-      throw CalculatorException(
-        'выражение заканчивается оператором',
-      );
-    }
+    _validateExpression();
 
     final result = _parseExpression();
 
@@ -32,6 +24,77 @@ class ExpressionParser {
     }
 
     return result;
+  }
+
+  void _validateExpression() {
+    if (_expression.isEmpty) {
+      throw CalculatorException('пустое выражение');
+    }
+
+    if (_isOperator(_expression[_expression.length - 1])) {
+      throw CalculatorException(
+        'выражение заканчивается оператором',
+      );
+    }
+
+    int openingBrackets = 0;
+    int closingBrackets = 0;
+
+    for (int i = 0; i < _expression.length; i++) {
+      final character = _expression[i];
+
+      if (character == '(') {
+        openingBrackets++;
+
+        if (i > 0) {
+          final previous = _expression[i - 1];
+
+          if (_isDigit(previous) || previous == ')') {
+            throw CalculatorException(
+              'перед открывающей скобкой должен быть оператор',
+            );
+          }
+        }
+      }
+
+      if (character == ')') {
+        closingBrackets++;
+
+        if (closingBrackets > openingBrackets) {
+          throw CalculatorException(
+            'неправильные скобки',
+          );
+        }
+
+        if (i == 0) {
+          throw CalculatorException(
+            'неправильные скобки',
+          );
+        }
+
+        final previous = _expression[i - 1];
+
+        if (_isOperator(previous) || previous == '(') {
+          throw CalculatorException(
+            'неправильные скобки',
+          );
+        }
+      }
+
+      if (_isOperator(character)) {
+        if (i > 0 && _isOperator(_expression[i - 1])) {
+          throw CalculatorException(
+            'два арифметических оператора подряд',
+          );
+        }
+      }
+    }
+
+    if (openingBrackets != closingBrackets) {
+      throw CalculatorException(
+        'неправильные скобки',
+      );
+    }
   }
 
   double _parseExpression() {
@@ -83,7 +146,7 @@ class ExpressionParser {
 
   double _parseFactor() {
     if (_position >= _expression.length) {
-      throw CalculatorException('ожидалось число число');
+      throw CalculatorException('ожидалось число');
     }
 
     if (_expression[_position] == '-') {
@@ -105,7 +168,9 @@ class ExpressionParser {
 
       if (_position >= _expression.length ||
           _expression[_position] != ')') {
-        throw CalculatorException('неправильные скобки');
+        throw CalculatorException(
+          'неправильные скобки',
+        );
       }
 
       _position++;
@@ -114,7 +179,9 @@ class ExpressionParser {
     }
 
     if (_expression[_position] == ')') {
-      throw CalculatorException('неправильные скобки');
+      throw CalculatorException(
+        'неправильные скобки',
+      );
     }
 
     return _parseNumber();
@@ -144,10 +211,15 @@ class ExpressionParser {
     }
 
     if (start == _position) {
-      throw CalculatorException('ожидалось число');
+      throw CalculatorException(
+        'ожидалось число',
+      );
     }
 
-    final numberText = _expression.substring(start, _position);
+    final numberText = _expression.substring(
+      start,
+      _position,
+    );
 
     try {
       return double.parse(numberText);
