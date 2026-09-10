@@ -73,6 +73,62 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     }
   }
 
+  void percent() {
+    if (expression.isEmpty) {
+      return;
+    }
+
+    final last = expression[expression.length - 1];
+
+    if (_isOperator(last) || last == '(') {
+      return;
+    }
+
+    setState(() {
+      int start = expression.length - 1;
+
+      while (start >= 0 &&
+          (_isDigit(expression[start]) || expression[start] == '.')) {
+        start--;
+      }
+
+      final number = expression.substring(start + 1);
+
+      final value = double.parse(number) / 100;
+
+      expression = expression.substring(0, start + 1) + value.toString();
+    });
+  }
+
+  void changeSign() {
+    if (expression.isEmpty) {
+      return;
+    }
+
+    final last = expression[expression.length - 1];
+
+    if (_isOperator(last) || last == '(') {
+      return;
+    }
+
+    setState(() {
+      int start = expression.length - 1;
+
+      while (start >= 0 &&
+          (_isDigit(expression[start]) || expression[start] == '.')) {
+        start--;
+      }
+
+      final number = expression.substring(start + 1);
+
+      if (start >= 0 && expression[start] == '-') {
+        expression = expression.substring(0, start) + number;
+      } else {
+        expression = expression.substring(0, start + 1) + '-' + number;
+      }
+    });
+  }
+
   void clear() {
     setState(() {
       expression = '';
@@ -97,10 +153,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   bool _isOperator(String button) {
-    return button == '+' ||
-        button == '−' ||
-        button == '×' ||
-        button == '÷';
+    return button == '+' || button == '−' || button == '×' || button == '÷';
   }
 
   bool _canAddOperator() {
@@ -189,9 +242,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('android_lab1'),
-      ),
+      appBar: AppBar(title: const Text('android_lab1')),
       body: SafeArea(
         child: Column(
           children: [
@@ -206,9 +257,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   children: [
                     Text(
                       expression.isEmpty ? '0' : expression,
-                      style: const TextStyle(
-                        fontSize: 32,
-                      ),
+                      style: const TextStyle(fontSize: 32),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -226,48 +275,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               flex: 2,
               child: Column(
                 children: [
-                  buildButtonRow([
-                    'M+',
-                    'M−',
-                    'MR',
-                    'MC',
-                  ]),
-                  buildButtonRow([
-                    'C',
-                    '⌫',
-                    '(',
-                    ')',
-                  ]),
-                  buildButtonRow([
-                    '7',
-                    '8',
-                    '9',
-                    '÷',
-                  ]),
-                  buildButtonRow([
-                    '4',
-                    '5',
-                    '6',
-                    '×',
-                  ]),
-                  buildButtonRow([
-                    '1',
-                    '2',
-                    '3',
-                    '−',
-                  ]),
-                  buildButtonRow([
-                    '0',
-                    '.',
-                    '%',
-                    '+',
-                  ]),
-                  buildButtonRow([
-                    '±',
-                    '=',
-                    '',
-                    '',
-                  ]),
+                  buildButtonRow(['M+', 'M−', 'MR', 'MC']),
+                  buildButtonRow(['C', '⌫', '(', ')']),
+                  buildButtonRow(['7', '8', '9', '÷']),
+                  buildButtonRow(['4', '5', '6', '×']),
+                  buildButtonRow(['1', '2', '3', '−']),
+                  buildButtonRow(['0', '.', '%', '+']),
+                  buildButtonRow(['±', '=', '', '']),
                 ],
               ),
             ),
@@ -299,22 +313,21 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 onPressed: button.isEmpty
                     ? null
                     : () {
-                  if (button == '=') {
-                    calculate();
-                  } else if (button == 'C') {
-                    clear();
-                  } else if (button == '⌫') {
-                    backspace();
-                  } else {
-                    onButtonPressed(button);
-                  }
-                },
-                child: Text(
-                  button,
-                  style: const TextStyle(
-                    fontSize: 20,
-                  ),
-                ),
+                        if (button == '=') {
+                          calculate();
+                        } else if (button == 'C') {
+                          clear();
+                        } else if (button == '⌫') {
+                          backspace();
+                        } else if (button == '±') {
+                          changeSign();
+                        } else if (button == '%') {
+                          percent();
+                        } else {
+                          onButtonPressed(button);
+                        }
+                      },
+                child: Text(button, style: const TextStyle(fontSize: 20)),
               ),
             ),
           );

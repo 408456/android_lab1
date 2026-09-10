@@ -76,6 +76,11 @@ class ExpressionParser {
       throw FormatException('Ожидалось число');
     }
 
+    if (_expression[_position] == '-') {
+      _position++;
+      return -_parseFactor();
+    }
+
     if (_expression[_position] == '(') {
       _position++;
 
