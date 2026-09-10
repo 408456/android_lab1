@@ -9,6 +9,7 @@ class CalculationHistoryItem {
 class CalculatorMemory {
   double _value = 0;
 
+
   double get value => _value;
 
   void add(double value) {
