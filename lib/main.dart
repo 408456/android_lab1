@@ -13,7 +13,7 @@ class CalculatorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Лабораторная работа №1',
+      title: 'Android-IOS. Лабораторная работа №1. Гольцман Глеб 408456',
 
       theme: ThemeData(
         brightness: Brightness.light,
