@@ -1,4 +1,10 @@
-import '../model/calculation_history.dart';
+class CalculationHistoryItem {
+  final String expression;
+  final String result;
+
+  CalculationHistoryItem({required this.expression, required this.result});
+}
+
 
 class CalculatorMemory {
   double _value = 0;
